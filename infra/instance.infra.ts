@@ -1,5 +1,8 @@
 /// <reference path="../.sst/platform/config.d.ts" />
 
+import * as fs from "fs";
+import * as path from "path";
+
 const tag = "spotInstance";
 
 // Create a VPC for the Spot Instance
@@ -49,10 +52,10 @@ const spotInstanceRouteTableAssociation = new aws.ec2.RouteTableAssociation("spo
     routeTableId: spotInstanceRouteTable.id,
 });
 
-// Create a Security Group for SSH access within the spotInstanceVpc
+// Create a Security Group for SSH and HTTP access within the spotInstanceVpc
 const securityGroup = new aws.ec2.SecurityGroup("instanceSpotSecurityGroup", {
     vpcId: spotInstanceVpc.id,
-    description: `${tag} security group to allow SSH access`,
+    description: `${tag} security group to allow SSH and HTTP access`,
     ingress: [
         {
             description: "SSH access",
@@ -60,6 +63,13 @@ const securityGroup = new aws.ec2.SecurityGroup("instanceSpotSecurityGroup", {
             toPort: 22,
             protocol: "tcp",
             cidrBlocks: ["0.0.0.0/0"], // Consider restricting this in production
+        },
+        {
+            description: "HTTP access for hello-world server",
+            fromPort: 80,
+            toPort: 80,
+            protocol: "tcp",
+            cidrBlocks: ["0.0.0.0/0"],
         },
     ],
     egress: [
@@ -88,6 +98,12 @@ const ubuntuAmi = aws.ec2.getAmi({
     ],
 });
 
+// Read user data script to set up hello-world server on instance startup
+const userDataScript = fs.readFileSync(
+    path.join(process.cwd(), "scripts/user-data.sh"),
+    "utf-8"
+);
+
 // Create the Spot Instance in the same VPC/subnet/security group
 export const instanceSpot = new aws.ec2.Instance("instanceSpot", {
     ami: ubuntuAmi.then(ami => ami.id),
@@ -95,6 +111,7 @@ export const instanceSpot = new aws.ec2.Instance("instanceSpot", {
     subnetId: spotInstanceSubnet.id,
     vpcSecurityGroupIds: [securityGroup.id],
     associatePublicIpAddress: true, // Ensure instance has a public IPv4
+    userData: userDataScript,
     instanceMarketOptions: {
         marketType: "spot",
         spotOptions: {
