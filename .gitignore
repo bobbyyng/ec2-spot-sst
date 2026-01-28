@@ -140,3 +140,5 @@ vite.config.ts.timestamp-*
 
 # sst
 .sst
+
+ec2-spot/.sst
