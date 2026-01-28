@@ -4,7 +4,7 @@ export default $config({
   app(input) {
     return {
       name: "ec2-spot-sst",
-      removal: input?.stage === "prod" ? "retain" : "remove",
+      removal: "remove",
       protect: ["prod", "dev"].includes(input?.stage),
       home: "aws",
       providers: { aws: "7.16.0" },
